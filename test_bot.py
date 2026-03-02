@@ -1,11 +1,13 @@
 import requests
 import time
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
+import os
 
 BOT_TOKEN = '8740804498:AAH7KBEAhdv1VAZZwGagd1Y9HyC4cWbVboc'
 USERS_FILE = 'users.json'
+LOG_FILE = 'moex_log.txt'
 
 USERS = set()
 LAST_UPDATE = 0
@@ -22,6 +24,17 @@ def load_users():
 def save_users():
     with open(USERS_FILE, 'w') as f:
         json.dump(list(USERS), f)
+
+def log_status():
+    """Лог статистики"""
+    uptime = time.time() - START_TIME
+    log_msg = f'''📊 СТАТУС БОТА {datetime.now().strftime("%H:%M MSK")}
+👥 Подписчиков: {len(USERS)}
+⏱️ Uptime: {uptime/3600:.1f}ч
+💾 Файл users: {os.path.exists(USERS_FILE)}
+📈 Последний IMOEX: {fmt(get_ticker_data("IMOEX", True)[2])}'''
+    print(log_msg)
+    return log_msg
 
 def fmt(v):
     return f'{float(v):.2f}' if v and str(v).replace('.','').replace('-','').isdigit() else '—'
@@ -77,20 +90,20 @@ def check_updates():
                 LAST_UPDATE = update['update_id'] + 1
         except:
             pass
-        time.sleep(60)  # Реже
+        time.sleep(60)
 
 def hourly_report():
     print('🔄 НАЧИНАЮ ОТЧЁТ...')
-    time_now = datetime.now().strftime('%H:%M')
+    msk_time = (datetime.now() + timedelta(hours=3)).strftime('%H:%M')
     
     imoex = get_ticker_data('IMOEX', True)
     sber = get_ticker_data('SBER')
     lkoh = get_ticker_data('LKOH')
     gmkn = get_ticker_data('GMKN')
     
-    print(f'✅ Данные получены IMOEX: {fmt(imoex[2])}')
+    print(f'✅ Данные IMOEX: {fmt(imoex[2])}')
     
-    message = f'''🕐 {time_now}
+    message = f'''🕐 {msk_time}
 
 📊 IMOEX
 Вчера: {fmt(imoex[0])}
@@ -106,32 +119,4 @@ def hourly_report():
 
 📊 LKOH
 Вчера: {fmt(lkoh[0])}
-Сегодня: {fmt(lkoh[1])} → {fmt(lkoh[2])}
-📈 {fmt(lkoh[3])}%
-📏 Low: {fmt(lkoh[4])} High: {fmt(lkoh[5])}
-
-📊 GMKN
-Вчера: {fmt(gmkn[0])}
-Сегодня: {fmt(gmkn[1])} → {fmt(gmkn[2])}
-📈 {fmt(gmkn[3])}%
-📏 Low: {fmt(gmkn[4])} High: {fmt(gmkn[5])}'''
-
-    print('📤 ОТПРАВЛЯЮ...')
-    send_to_all(message)
-    print('✅ ОТЧЁТ ГОТОВ!')
-
-if __name__ == '__main__':
-    load_users()
-    print('🚀 МОНИТОРИНГ ЗАПУЩЕН')
-    
-    # Авторегистрация в фоне
-    threading.Thread(target=check_updates, daemon=True).start()
-    
-    # ПЕРВЫЙ ОТЧЁТ СРАЗУ!
-    hourly_report()
-    
-    # Дальше каждый час
-    while True:
-        print('💤 Сплю 1 час...')
-        time.sleep(3600)
-        hourly_report()
+Сегодня: {fmt(lkoh[1])}
